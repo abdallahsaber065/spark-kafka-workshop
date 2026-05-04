@@ -6,6 +6,17 @@ This project is a small real-time data pipeline:
 
 The workshop shows how an application can publish events, how Kafka can hold those events safely, and how Spark Structured Streaming can read and analyze them while they are still arriving.
 
+## Recommended Versions
+
+For this workshop, the safest version combination is:
+
+- Python 3.10 or 3.11
+- Java 17
+- `pyspark==3.5.1`
+- `spark-sql-kafka-0-10_2.12:3.5.1`
+
+Spark 3.5.1 supports Java 8/11/17 and Python 3.8+, but Python 3.12 and 3.13 are not a good fit for this workshop. That is why this project now pins PySpark to 3.5.1 and avoids newer Python versions.
+
 ## What Is Kafka?
 
 Kafka is an event streaming platform. In simple terms, it is a place where programs can send messages and other programs can read them later.
@@ -66,6 +77,12 @@ In this workshop:
 
 ## Setup With `uv`
 
+If your VPS does not already have a compatible Python version, install one first:
+
+```bash
+uv python install 3.11
+```
+
 Install the Python dependencies:
 
 ```bash
@@ -73,6 +90,15 @@ uv sync
 ```
 
 `uv` will create the environment and install the Python packages from `pyproject.toml`.
+
+If `JAVA_HOME` is not set yet, install Java 17 and point `JAVA_HOME` at the JDK directory. On Ubuntu or Debian, the usual commands are:
+
+```bash
+sudo apt update
+sudo apt install -y openjdk-17-jdk
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH="$JAVA_HOME/bin:$PATH"
+```
 
 Start Kafka:
 
@@ -97,7 +123,7 @@ docker compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
 Run the Spark consumer first so it waits for new messages:
 
 ```bash
-spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py
+uv run spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py
 ```
 
 In another terminal, send the sample orders:

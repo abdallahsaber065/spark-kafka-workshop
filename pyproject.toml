@@ -2,9 +2,9 @@
 name = "spark-kafka-workshop"
 version = "0.1.0"
 description = "Spark Structured Streaming and Kafka workshop materials"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12"
 dependencies = [
     "kafka-python",
-    "pyspark",
+    "pyspark==3.5.1",
 ]
 
