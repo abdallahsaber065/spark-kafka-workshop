@@ -83,13 +83,13 @@ docker compose up -d
 Create the topic:
 
 ```bash
-docker exec -it kafka kafka-topics --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+docker compose exec kafka kafka-topics --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 ```
 
 Check the topic:
 
 ```bash
-docker exec -it kafka kafka-topics --list --bootstrap-server localhost:9092
+docker compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
 ```
 
 ## How To Run The Workshop
@@ -159,5 +159,6 @@ Kafka is the message broker that stores events. Spark is the streaming engine th
 
 - If Spark shows no output, start the consumer first, then run the producer.
 - If Kafka cannot connect, confirm the container is running and port `9092` is available.
+- If Docker says a container name is already in use, it usually means an older Kafka container is still around. Remove it once with `docker rm -f kafka` or run `docker compose down` in the old project folder.
 - If the Kafka package is missing, make sure the Spark package version matches your Spark installation.
 - If the topic does not exist, create the `orders` topic again.
