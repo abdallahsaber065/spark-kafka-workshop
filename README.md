@@ -4,23 +4,29 @@ This workspace contains the files needed for the workshop in the PDF:
 
 - `docker-compose.yml` starts ZooKeeper and Kafka locally.
 - `producer_orders.py` sends the sample order events to the `orders` topic.
-- `spark_kafka_consumer.py` is the starter Spark consumer from the PDF.
+- `spark_kafka_consumer.py` is the Spark consumer for the workshop tasks.
+- `docs/spark-kafka-workshop.md` explains Kafka, Spark, the pipeline, and how to run the workshop.
 
-## Run order
+## Quick Start
 
-1. Start Kafka with `docker compose up -d`.
-2. Create the `orders` topic.
-3. Run the Spark consumer first.
-4. Run the producer in another terminal.
+1. Install Python dependencies with `uv sync`.
+2. Start Kafka with `docker compose up -d`.
+3. Create the `orders` topic.
+4. Run the Spark consumer.
+5. Run the producer in another terminal with `uv run python producer_orders.py`.
 
-Run the Spark consumer with the command from the PDF:
+The Spark consumer is run with Spark itself:
 
 `spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py`
 
-## Consumer modes
+## Workshop Modes
 
-Follow the PDF tasks by editing `spark_kafka_consumer.py` to show incoming orders, then product names, then filtered orders, then discounted prices, and finally the bonus count per customer.
+Edit `WORKSHOP_TASK` in `spark_kafka_consumer.py` to switch between the workshop steps:
 
-## Short explanation
+- `incoming`
+- `products`
+- `expensive`
+- `discounted`
+- `count` for the bonus task
 
-Kafka acts as the message broker that stores the order events briefly and lets another process read them later. Spark acts as the streaming consumer and processor that reads the events, transforms them, and prints results in real time.
+For a full beginner-friendly explanation, open `docs/spark-kafka-workshop.md`.
