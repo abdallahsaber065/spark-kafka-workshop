@@ -160,5 +160,6 @@ Kafka is the message broker that stores events. Spark is the streaming engine th
 - If Spark shows no output, start the consumer first, then run the producer.
 - If Kafka cannot connect, confirm the container is running and port `9092` is available.
 - If Docker says a container name is already in use, it usually means an older Kafka container is still around. Remove it once with `docker rm -f kafka` or run `docker compose down` in the old project folder.
+- If the broker crashes on a small machine like a 1 GB EC2 instance, the Docker Compose file already lowers the Kafka and ZooKeeper JVM heap sizes. If you still see memory errors, close other apps or add swap on the host.
 - If the Kafka package is missing, make sure the Spark package version matches your Spark installation.
 - If the topic does not exist, create the `orders` topic again.
