@@ -36,6 +36,7 @@ def build_orders_df(spark: SparkSession):
         .option("kafka.bootstrap.servers", DEFAULT_BOOTSTRAP_SERVERS)
         .option("subscribe", DEFAULT_TOPIC)
         .option("startingOffsets", "latest")
+        .option("failOnDataLoss", "false")
         .load()
     )
 
