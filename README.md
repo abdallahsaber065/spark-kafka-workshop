@@ -6,19 +6,49 @@ This workspace contains the files needed for the workshop in the PDF:
 - `producer_orders.py` sends the sample order events to the `orders` topic.
 - `spark_kafka_consumer.py` is the Spark consumer for the workshop tasks.
 - `docs/spark-kafka-workshop.md` explains Kafka, Spark, the pipeline, and how to run the workshop.
+- `docs/script-walkthrough.md` breaks down the producer and consumer scripts section by section.
 
-## Quick Start
+## Setup
 
-1. Install Python dependencies with `uv sync`.
-2. Make sure Java 17 is installed and `JAVA_HOME` points to the JDK directory.
-3. Start Kafka with `docker compose up -d`.
-4. Create the `orders` topic.
-5. Run the Spark consumer with `uv run spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py`.
-6. Run the producer in another terminal with `uv run python producer_orders.py`.
+1. Make sure `uv` is installed.
+2. Install a compatible Python version if needed:
 
-The Spark consumer is run with Spark itself through `uv`:
+   ```bash
+   uv python install 3.11
+   ```
 
-`uv run spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py`
+3. Install the Python dependencies:
+
+   ```bash
+   uv sync
+   ```
+
+4. Install Java 17 and set `JAVA_HOME` to the JDK directory.
+5. Start Kafka with Docker:
+
+   ```bash
+   docker compose up -d
+   ```
+
+6. Create the `orders` topic:
+
+   ```bash
+   docker compose exec kafka kafka-topics --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+   ```
+
+## Run
+
+Run the Spark consumer first:
+
+```bash
+uv run spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py
+```
+
+Then send the sample orders from another terminal:
+
+```bash
+uv run python producer_orders.py
+```
 
 ## Workshop Modes
 

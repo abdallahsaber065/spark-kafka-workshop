@@ -75,63 +75,6 @@ In this workshop:
 - `spark_kafka_consumer.py` reads the Kafka stream and shows the workshop tasks.
 - `pyproject.toml` defines the Python dependencies for `uv`.
 
-## Setup With `uv`
-
-If your VPS does not already have a compatible Python version, install one first:
-
-```bash
-uv python install 3.11
-```
-
-Install the Python dependencies:
-
-```bash
-uv sync
-```
-
-`uv` will create the environment and install the Python packages from `pyproject.toml`.
-
-If `JAVA_HOME` is not set yet, install Java 17 and point `JAVA_HOME` at the JDK directory. On Ubuntu or Debian, the usual commands are:
-
-```bash
-sudo apt update
-sudo apt install -y openjdk-17-jdk
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-export PATH="$JAVA_HOME/bin:$PATH"
-```
-
-Start Kafka:
-
-```bash
-docker compose up -d
-```
-
-Create the topic:
-
-```bash
-docker compose exec kafka kafka-topics --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-```
-
-Check the topic:
-
-```bash
-docker compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
-```
-
-## How To Run The Workshop
-
-Run the Spark consumer first so it waits for new messages:
-
-```bash
-uv run spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py
-```
-
-In another terminal, send the sample orders:
-
-```bash
-uv run python producer_orders.py
-```
-
 ## Workshop Tasks
 
 `spark_kafka_consumer.py` is set to one task at a time through the `WORKSHOP_TASK` variable near the top of the file.
@@ -150,22 +93,46 @@ WORKSHOP_TASK = "count"
 
 The bonus task is already included in the code. It uses `groupBy("customer").count()` and Spark `complete` output mode so the full totals table is printed each time data changes.
 
-## How The Consumer Works
+## Command Notes
 
-The consumer follows the same flow as the PDF:
+These are the main commands the project uses and what each one does:
 
-1. Connect to Kafka with `spark.readStream.format("kafka")`.
-2. Read the `orders` topic.
-3. Convert each Kafka message from bytes into a JSON string.
-4. Parse the JSON into `customer`, `product`, and `price`.
-5. Apply the selected workshop task.
-6. Print the result to the console.
+- `uv sync` creates the local Python environment and installs the packages from `pyproject.toml`.
+- `uv run python producer_orders.py` runs the producer inside that environment.
+- `uv run spark-submit ... spark_kafka_consumer.py` launches Spark then loads the Kafka connector package for Structured Streaming.
+- `docker compose up -d` starts ZooKeeper and Kafka in the background.
+- `docker compose exec kafka kafka-topics ...` runs Kafka CLI commands inside the Kafka container so we can create and inspect the `orders` topic.
 
-The JSON schema is simple:
+## Code Walkthrough
 
-- `customer`: who placed the order,
-- `product`: what they bought,
-- `price`: the order price.
+### `producer_orders.py`
+
+The producer is a short script that creates a `KafkaProducer`, converts Python dictionaries into JSON, and sends them to the `orders` topic. The `time.sleep(2)` call is only there to make the messages appear one by one during the workshop, so the stream is easier to follow on screen.
+
+### `spark_kafka_consumer.py`
+
+The consumer does the real workshop work:
+
+1. It starts a `SparkSession` and lowers Spark logging noise.
+2. It reads the Kafka topic with `spark.readStream.format("kafka")`.
+3. It casts the Kafka `value` column from bytes to text.
+4. It parses the JSON into the `customer`, `product`, and `price` columns.
+5. It chooses one task view based on `WORKSHOP_TASK`.
+6. It writes the result to the console so the class can see the stream live.
+
+The `WORKSHOP_TASK` variable is the part to change when you want a different view:
+
+- `incoming` shows the full parsed order row.
+- `products` keeps only the product name.
+- `expensive` filters to rows where `price > 500`.
+- `discounted` adds a `discounted_price` column using `price * 0.9`.
+- `count` is the bonus task and groups by customer.
+
+The schema in the consumer is intentionally small because the workshop is about the streaming flow, not about a complicated data model.
+
+## Why The Stream Is Written This Way
+
+The consumer uses `append` output mode for the row-by-row tasks because each new Kafka record is a new result row. The bonus aggregation uses `complete` output mode because Spark needs to print the full group-by table every time the counts change.
 
 ## How To Explain It To The TA
 
@@ -173,19 +140,124 @@ If you need a short explanation, use this:
 
 Kafka is the message broker that stores events. Spark is the streaming engine that reads those events and analyzes them. The producer sends order messages into Kafka, and the Spark consumer reads them and shows different views of the data in real time.
 
-## Common Questions
+## Discussion Questions
 
-- Why do we need Kafka? To hold and deliver events between the app and the stream processor.
-- Why not send data directly to Spark? Because Kafka makes the pipeline more flexible and reliable.
-- What is streaming data? Data that arrives continuously.
-- What is batch data? Data that is collected first and processed later.
-- What happens while Spark is running and new orders arrive? Spark keeps reading and printing the new events.
+1. Why do we need Kafka between the application and Spark?
 
-## Common Troubleshooting
+   Kafka sits between the producer and Spark so the app can send events immediately while Spark reads them later. It buffers the data, decouples the two sides, and makes the pipeline more reliable if Spark is slow or restarts.
 
-- If Spark shows no output, start the consumer first, then run the producer.
-- If Kafka cannot connect, confirm the container is running and port `9092` is available.
-- If Docker says a container name is already in use, it usually means an older Kafka container is still around. Remove it once with `docker rm -f kafka` or run `docker compose down` in the old project folder.
-- If the broker crashes on a small machine like a 1 GB EC2 instance, the Docker Compose file already lowers the Kafka and ZooKeeper JVM heap sizes. If you still see memory errors, close other apps or add swap on the host.
-- If the Kafka package is missing, make sure the Spark package version matches your Spark installation.
-- If the topic does not exist, create the `orders` topic again.
+2. What is the difference between batch data and streaming data?
+
+   Batch data is collected first and processed later in a group. Streaming data arrives continuously and is processed while it is still coming in.
+
+3. What happens if the producer sends more orders while Spark is still running?
+
+   Spark keeps listening to the Kafka topic and reads the new orders as they arrive. In the console, you see new rows appear in later micro-batches without stopping the consumer.
+
+4. Which part of the pipeline is the producer? Which part is the consumer?
+
+   `producer_orders.py` is the producer because it sends the order events to Kafka. `spark_kafka_consumer.py` is the consumer because Spark reads the Kafka topic and processes the events.
+
+## Code & Commands
+
+### Kafka startup and topic creation
+
+```bash
+docker compose up -d
+docker compose exec kafka kafka-topics --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+docker compose exec kafka kafka-topics --list --bootstrap-server localhost:9092 # Check that the topic exists
+```
+
+The topic creation command ends with:
+
+```text
+Created topic orders.
+```
+
+### Producer terminal
+
+```bash
+uv run python producer_orders.py
+```
+
+output:
+
+```text
+Sent: {'customer': 'Omar', 'product': 'Phone', 'price': 650}
+Sent: {'customer': 'Sara', 'product': 'Keyboard', 'price': 75}
+Sent: {'customer': 'Mona', 'product': 'Laptop', 'price': 1100}
+Sent: {'customer': 'Ali', 'product': 'Mouse', 'price': 25}
+Sent: {'customer': 'Sara', 'product': 'Phone', 'price': 800}
+Sent: {'customer': 'Ali', 'product': 'Laptop', 'price': 1200}
+```
+
+### Spark consumer terminal
+
+```bash
+uv run spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 spark_kafka_consumer.py
+```
+
+output:
+
+```text
+Reading from Kafka topic 'orders' at localhost:9092
+Running workshop task: incoming
+```
+
+```text
+Batch: 0
++--------+-------+-----+
+|customer|product|price|
++--------+-------+-----+
++--------+-------+-----+
+-------------------------------------------
+
+Batch: 1
++--------+-------+-----+
+|Ali     |Laptop |1200 |
++--------+-------+-----+
+|customer|product|price|
++--------+-------+-----+
+-------------------------------------------
+
+Batch: 2
++--------+-------+-----+
+|Ali     |Mouse  |25   |
+|Sara    |Phone  |800  |
++--------+-------+-----+
+|customer|product|price|
++--------+-------+-----+
+-------------------------------------------
+
+Batch: 3
++--------+-------+-----+
+|Mona    |Laptop |1100 |
++--------+-------+-----+
+|customer|product|price|
++--------+-------+-----+
+-------------------------------------------
+
+Batch: 4
++--------+--------+-----+
+|Sara    |Keyboard|75   |
++--------+--------+-----+
+|customer|product |price|
++--------+--------+-----+
+-------------------------------------------
+
+Batch: 5
++--------+-------+-----+
+|Omar    |Phone  |650  |
++--------+-------+-----+
+|customer|product|price|
++--------+-------+-----+
+-------------------------------------------
+```
+
+### What this snapshot shows
+
+- `docker compose up -d` starts Kafka and ZooKeeper.
+- Kafka accepts the `orders` topic.
+- The producer sends order events one by one.
+- Spark reads the topic and prints each batch as it arrives.
+- The changing batch numbers show that this is a streaming pipeline, not a batch job.
